@@ -15,7 +15,7 @@ while 1:
     if 'exit' in userArgs:
         sys.exit(-1)
 
-    # change directory when cd is in user input
+    # change directory when cd is in userArgs
     if 'cd' in userArgs:
         if '..' in userArgs:
             dirChange = '..'
