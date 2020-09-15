@@ -2,36 +2,45 @@
 
 import os, sys, time, re
 
-while 1:
-    userInput = input(os.getcwd() + "$")
-    userArgs = userInput.split(" ")
+while 1: #infinite loop that will keep us on the shell until user enters exit
+
+    if 'PS1' in os.environ:
+        os.write(1, (os.environ['PS1']).encode())
+    else:
+        os.write(1, ('$ ').encode())
+        
+    userInput = input()
+    userInput = userInput.split(" ")
 
     # if user doesn't input anything, we prompt again
-    if "" in userArgs:
+    if "" in userInput:
         continue
 
 
     # end shell if user enters exit
-    if 'exit' in userArgs:
-        sys.exit(-1)
+    if 'exit' in userInput:
+        os.write(1, ("Leaving shell...").encode())
+        sys.exit(0)
+        break
 
-    # change directory when cd is in userArgs
-    if 'cd' in userArgs:
-        if '..' in userArgs:
+    # change directory when user enters cd
+    if 'cd' in userInput:
+        if '..' in userInput:
             dirChange = '..'
         else:
-            dirChange = userArgs[0]
-            try:
-                os.chdir(dirChange) # attempt to change dir
+            dirChange = userInput[1]
 
-            except FileNotFoundError:
-                pass
+        try:
+            os.chdir(dirChange) # attempt to change dir
+            os.write(1, (os.getcwd()).encode())
+        except FileNotFoundError:
+            os.write(1, ("Directory does not exist!").encode())
+            pass
 
-            continue
-
+        continue
+        
         
     pid = os.getpid()
-    os.write(1, ("About to fork (pid:%d)\n" % pid).encode())
     rc = os.fork()
 
     if rc < 0:
@@ -40,10 +49,42 @@ while 1:
 
     elif rc == 0:
 
-        os.write(1, ("Child: pid ==%d. Parent: pid=%d\n" %(os.getpid(), pid)).encode())
+        com = userInput
+        for dir in re.split(":", os.environ['PATH']):
+            pexec = "%s/%s" % (dir, com[0])
+            os.write(1, ("Child: ...executing %s\n" % pexec).encode())
+            try:
+                os.execve(pexec, com, os.environ) #attempt to execute program
+            except FileNotFoundError:
+                pass
+
+        os.write(2, ("Child: Cannot execute %s\n" % com[0]).encode())
+        sys.exit(1)
             
     else:
-        os.write(1, ("Parent: pid=%d. Child's pid = %d\n" %(pid, rc)).encode())
-        childPid = os.wait()
-        os.write(1, ("Parent: Child %d terminated with exit code %d\n" %childPid).encode())
-                
+        os.wait()
+    
+def parser(userInput):
+    outFile = None
+    inFile = None
+    input = ""
+
+    userInput = re.sub(' +', '', userInput)
+
+    if '>' in userInput:
+        [input, inFile] = input.split('<', 1)
+        inFile = inFile.strip()
+
+    elif outFile != None and '<' in outFile:
+        [outFile, inFile] = outFile.split('<', 1)
+
+        outFile = outFile.strip()
+        inFile = inFile.strip()
+
+    return input.split(), outFile, inFile
+
+
+
+
+
+                       
